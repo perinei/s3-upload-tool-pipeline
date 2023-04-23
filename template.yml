@@ -1,6 +1,8 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: 'Template Pipeline for SAM S3 Upload Tool Backend;'
 
+################# CODE COMMIT AS SOURCE
+
 ###### METADATA ###################
 
 Metadata:
