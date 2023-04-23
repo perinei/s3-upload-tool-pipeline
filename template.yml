@@ -18,11 +18,8 @@ Metadata:
           default: "SAM Repository"
         Parameters:
           - pPipelineRepo
-          - pEnvironment
 
     ParameterLabels:
-      pEnvironment:
-        default: "Repository Branch"
       pProjectName:
         default: "Project Name"
       pPipelineRepo:
@@ -36,10 +33,6 @@ Parameters:
     Description: CodeCommit Pipeline Repo
 
   pProjectName:
-    Type: String
-    Default: ''
-
-  pEnvironment:
     Type: String
     Default: ''
 
@@ -229,7 +222,7 @@ Resources:
   rCodeBuildServiceRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${pProjectName}-${pEnvironment}-lambda-cb-role"
+      RoleName: !Sub "${pProjectName}-lambda-cb-role"
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -373,11 +366,9 @@ Resources:
           - Name: BUILD_ARTIFACT_BUCKET
             Value: !Ref rCodePipelineArtifactStoreBucket
           - Name: STACK_NAME
-            Value: !Sub "${pProjectName}-${pEnvironment}-api"
+            Value: !Sub "${pProjectName}-api"
           - Name: PROJECT_NAME
             Value: !Sub "${pProjectName}"
-          - Name: ENVIRONMENT
-            Value: !Sub "${pEnvironment}"
       Source:
         Type: CODEPIPELINE
       TimeoutInMinutes: 15
