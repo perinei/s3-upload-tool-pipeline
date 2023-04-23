@@ -1,57 +1,12 @@
-AWSTemplateFormatVersion: "2010-09-09"
-Description: 'Template Pipeline for SAM S3 Upload Tool Backend;'
-
-################# CODE COMMIT AS SOURCE
-
-###### METADATA ###################
-
-Metadata:
-  AWS::CloudFormation::Interface:
-    ParameterGroups:
-      -
-        Label:
-          default: "Project"
-        Parameters:
-          - pProjectName
-      -
-        Label:
-          default: "SAM Repository"
-        Parameters:
-          - pPipelineRepo
-
-    ParameterLabels:
-      pProjectName:
-        default: "Project Name"
-      pPipelineRepo:
-        default: "Repository Name"
-
-Parameters:
-
-  pPipelineRepo:
-    Type: String
-    Default: ''
-    Description: CodeCommit Pipeline Repo
-
-  pProjectName:
-    Type: String
-    Default: ''
-
-Mappings: 
-  repo:
-    branch:
-      Name: main
-
-Resources:
-
-  rCodePipelineArtifactStoreBucket:
+  rCodePipelineArtifactStoreBucketBackend:
     Type: 'AWS::S3::Bucket'
     # Properties:
     #   BucketName: !Sub '${pProjectName}-${pEnvironment}-cp-artifact'
 
-  rCodePipelineArtifactStoreBucketPolicy:
+  rCodePipelineArtifactStoreBucketBackendPolicy:
     Type: 'AWS::S3::BucketPolicy'
     Properties:
-      Bucket: !Ref rCodePipelineArtifactStoreBucket
+      Bucket: !Ref rCodePipelineArtifactStoreBucketBackend
       PolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -62,7 +17,7 @@ Resources:
             Resource: !Join
               - ''
               - - !GetAtt
-                  - rCodePipelineArtifactStoreBucket
+                  - rCodePipelineArtifactStoreBucketBackend
                   - Arn
                 - /*
             Condition:
@@ -75,19 +30,19 @@ Resources:
             Resource: !Join
               - ''
               - - !GetAtt
-                  - rCodePipelineArtifactStoreBucket
+                  - rCodePipelineArtifactStoreBucketBackend
                   - Arn
                 - /*
             Condition:
               Bool:
                 'aws:SecureTransport': false
 
-  rAppPipeline:
+  rAppPipelineBackend:
     Type: 'AWS::CodePipeline::Pipeline'
     Properties:
       Name: !Ref pProjectName
       RoleArn: !GetAtt
-        - rCodePipelineServiceRole
+        - rCodePipelineServiceRoleBackend
         - Arn
       Stages:
         - Name: Source
@@ -129,9 +84,9 @@ Resources:
               RunOrder: 1
       ArtifactStore:
         Type: S3
-        Location: !Ref rCodePipelineArtifactStoreBucket
+        Location: !Ref rCodePipelineArtifactStoreBucketBackend
  
-  rCodePipelineServiceRole:
+  rCodePipelineServiceRoleBackend:
     Type: 'AWS::IAM::Role'
     Properties:
       AssumeRolePolicyDocument:
@@ -181,13 +136,13 @@ Resources:
                 Action:
                   - 's3:PutObject'
                 Resource:
-                  - !GetAtt rCodePipelineArtifactStoreBucket.Arn
-                  - !Sub '${rCodePipelineArtifactStoreBucket.Arn}/*'
+                  - !GetAtt rCodePipelineArtifactStoreBucketBackend.Arn
+                  - !Sub '${rCodePipelineArtifactStoreBucketBackend.Arn}/*'
 
   # rSamCliSourceBucketBucketPolicy:
   #   Type: AWS::S3::BucketPolicy
   #   Properties:
-  #     Bucket: !Ref rCodePipelineArtifactStoreBucket
+  #     Bucket: !Ref rCodePipelineArtifactStoreBucketBackend
   #     PolicyDocument:
   #       Version: 2012-10-17
   #       Statement:
@@ -198,7 +153,7 @@ Resources:
   #           Resource: !Join
   #             - ''
   #             - - !GetAtt
-  #                 - rCodePipelineArtifactStoreBucket
+  #                 - rCodePipelineArtifactStoreBucketBackend
   #                 - Arn
   #               - /*
   #           Condition:
@@ -211,7 +166,7 @@ Resources:
   #           Resource: !Join
   #             - ''
   #             - - !GetAtt
-  #                 - rCodePipelineArtifactStoreBucket
+  #                 - rCodePipelineArtifactStoreBucketBackend
   #                 - Arn
   #               - /*
   #           Condition:
@@ -219,7 +174,7 @@ Resources:
   #               'aws:SecureTransport': false
 
 
-  rCodeBuildServiceRole:
+  rCodeBuildServiceRoleBackend:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub "${pProjectName}-lambda-cb-role"
@@ -232,12 +187,12 @@ Resources:
             Principal:
               Service:
                 - codebuild.amazonaws.com
-  rCodeBuildServicePolicy:
+  rCodeBuildServicePolicyBackend:
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: CodeBuildServicePolicy
       Roles:
-        - !Ref rCodeBuildServiceRole
+        - !Ref rCodeBuildServiceRoleBackend
       PolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -269,7 +224,7 @@ Resources:
               - s3:GetObjectVersion
               - s3:PutObject
             Resource:
-              - !Sub "arn:aws:s3:::${rCodePipelineArtifactStoreBucket}/*"
+              - !Sub "arn:aws:s3:::${rCodePipelineArtifactStoreBucketBackend}/*"
           - Effect: Allow
             Action:
               - cloudformation:CreateChangeSet
@@ -329,6 +284,7 @@ Resources:
               - s3:CreateBucket
               - s3:GetObject
               - s3:PutObject
+              - s3:PutBucketPolicy
             Resource:
               - '*'
           - Sid: SG
@@ -349,11 +305,11 @@ Resources:
               - wafv2:*
               - apigateway:SetWebACL
             Resource: '*'
-  rCodeBuildProject:
+  rCodeBuildProjectBackend:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Ref pProjectName
-      ServiceRole: !GetAtt rCodeBuildServiceRole.Arn
+      ServiceRole: !GetAtt rCodeBuildServiceRoleBackend.Arn
       Artifacts:
         Type: CODEPIPELINE
       Environment:
@@ -364,7 +320,7 @@ Resources:
         Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
         EnvironmentVariables:
           - Name: BUILD_ARTIFACT_BUCKET
-            Value: !Ref rCodePipelineArtifactStoreBucket
+            Value: !Ref rCodePipelineArtifactStoreBucketBackend
           - Name: STACK_NAME
             Value: !Sub "${pProjectName}-api"
           - Name: PROJECT_NAME
@@ -373,7 +329,7 @@ Resources:
         Type: CODEPIPELINE
       TimeoutInMinutes: 15
 
-  rAmazonCloudWatchEventRole:
+  rAmazonCloudWatchEventRoleBackend:
     Type: 'AWS::IAM::Role'
     Properties:
       AssumeRolePolicyDocument:
@@ -399,4 +355,4 @@ Resources:
                     - ':'
                     - !Ref 'AWS::AccountId'
                     - ':'
-                    - !Ref rAppPipeline
+                    - !Ref rAppPipelineBackend
