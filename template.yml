@@ -330,7 +330,7 @@ Resources:
               - s3:GetObject
               - s3:PutObject
             Resource:
-              - arn:aws:s3:::*/*
+              - '*'
           - Sid: SG
             Effect: Allow
             Action:
